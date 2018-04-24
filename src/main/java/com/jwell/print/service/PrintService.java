@@ -1,8 +1,12 @@
 package com.jwell.print.service;
 
 import com.google.gson.JsonObject;
+import com.jwell.print.config.PrinterConfig;
+import com.jwell.print.entity.PrinterEntity;
 import com.jwell.print.factory.PrinterFactory;
+import com.jwell.print.util.QrCodeUtil;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -10,6 +14,7 @@ import org.springframework.util.StringUtils;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 
 /**
  * 打印服务
@@ -19,6 +24,9 @@ import java.net.URL;
  */
 @Service
 public class PrintService {
+
+    @Autowired
+    private PrinterConfig printerConfig;
 
     /**
      * pdf文件存放路径
@@ -36,7 +44,11 @@ public class PrintService {
 
     private static final String MSG = "msg";
 
-    public String print(String pdfUrl) {
+    private static final int WIDTH = 100;
+
+    private static final int HEIGHT = 100;
+
+    public String print(String pdfUrl, String printerKey) {
 
         JsonObject result = new JsonObject();
 
@@ -71,8 +83,11 @@ public class PrintService {
                 // 保存文件
                 String fileName = saveFile(inputStream);
 
-                // 执行打印(选择默认打印机)
-                PrinterFactory.printPDF(null, new FileInputStream(fileName));
+                // 选择打印机
+                PrinterEntity printerEntity = getPrinterEntity(printerKey);
+
+                // 执行打印
+                PrinterFactory.printPDF(printerEntity, new FileInputStream(fileName), result);
 
                 log.debug(pdfUrl + " 打印成功");
                 result.addProperty(MSG, pdfUrl + " 打印成功");
@@ -100,6 +115,42 @@ public class PrintService {
     }
 
     /**
+     * 生成二维码
+     *
+     * @param code
+     * @return
+     */
+    public String printCode(String code) {
+        JsonObject result = new JsonObject();
+
+        String fileName = codeTempPath + File.separator + System.currentTimeMillis() + ".gif";
+
+        try {
+            QrCodeUtil.createQRCode(code, WIDTH, HEIGHT, fileName);
+        } catch (Exception e) {
+            log.debug("生成二维码失败 " + e);
+            result.addProperty(MSG, "生成二维码失败");
+            return result.toString();
+        }
+
+        log.debug("生成二维码成功");
+
+        // 执行打印(选择默认打印机)
+        try {
+            PrinterFactory.printCode(null, fileName, new FileInputStream(fileName));
+        } catch (Exception e) {
+            log.debug("打印失败, 信息如下: " + e);
+            result.addProperty(MSG, "打印二维码失败");
+            return result.toString();
+        }
+
+        log.debug("打印二维码成功");
+
+        result.addProperty(MSG, "打印二维码成功");
+        return result.toString();
+    }
+
+    /**
      * 保存文件
      *
      * @param inputStream
@@ -114,7 +165,7 @@ public class PrintService {
         if (!saveDir.exists()) {
             saveDir.mkdirs();
         }
-        String fileName = saveDir + File.separator + System.currentTimeMillis();
+        String fileName = saveDir + File.separator + System.currentTimeMillis() + ".pdf";
 
         File file = new File(fileName);
         FileOutputStream fos = new FileOutputStream(file);
@@ -145,5 +196,29 @@ public class PrintService {
         }
         bos.close();
         return bos.toByteArray();
+    }
+
+    /**
+     * 在printer.properties中获取打印机名称
+     *
+     * @Param 机组线 key
+     * @Return 打印机实体  null 为默认
+     */
+    public PrinterEntity getPrinterEntity(String printerKey) {
+
+        List<PrinterEntity> list = printerConfig.getPrinterList();
+        if (list.isEmpty() || "".equals(printerKey)) {
+            return null;
+        } else {
+            for (int i = 0, len = list.size(); i < len; i++) {
+
+                // 判断机组线, 返回对应打印机实体
+                if (printerKey.equals(list.get(i).getKey())) {
+                    return list.get(i);
+                }
+            }
+            return null;
+        }
+
     }
 }

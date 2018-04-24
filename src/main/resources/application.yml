@@ -1,0 +1,11 @@
+listMap:
+  printerList:
+    - key: 机组线1
+      printerName: 打印机1
+      address: 服务大厅订单查询处
+    - key: 机组线2
+      printerName: test
+      address: A区东门左边
+    - key: 机组线3
+      printerName: 打印机3
+      address: B区南门左边

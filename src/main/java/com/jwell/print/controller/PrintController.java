@@ -26,16 +26,27 @@ public class PrintController {
 
     @RequestMapping(value = "/pdf", method = RequestMethod.POST)
     @ResponseBody
-    public String print(@RequestParam("pdfUrl") String pdfUrl) {
+    public String print(@RequestParam("pdfUrl") String pdfUrl, @RequestParam("printerKey") String printerKey) {
         log.debug("即将开始打印，打印的url地址是：" + pdfUrl);
 
         // 调用服务的打印接口
-        return printService.print(pdfUrl);
+        return printService.print(pdfUrl, printerKey);
     }
 
-    final static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+    @RequestMapping(value = "/code", method = RequestMethod.POST)
+    @ResponseBody
+    public String printCode(@RequestParam("code") String code) {
+        log.debug("即将开始打印二维码，打印的二维码内容是：" + code);
+
+        return printService.printCode(code);
+    }
+
+
+    final static SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private static final int RUN_TIMES = 5;
     private static final String PDF_URL = "http://www.gov.cn/zhengce/pdfFile/2018_PDF.pdf";
+    private static final String PRINTER_KEY = "1";
     private static CountDownLatch countDownLatch = new CountDownLatch(1);
 
     @RequestMapping(value = "/test")
@@ -51,13 +62,13 @@ public class PrintController {
                         e.printStackTrace();
                     }
 
-                    System.out.println(this.getName() + "并发执行打印开始" + sdf.format(new Date()));
-                    printService.print(PDF_URL);
-                    System.out.println(this.getName() + "并发执行打印结束" + sdf.format(new Date()));
+                    System.out.println(this.getName() + "并发执行打印开始" + SIMPLE_DATE_FORMAT.format(new Date()));
+                    printService.print(PDF_URL, PRINTER_KEY);
+                    System.out.println(this.getName() + "并发执行打印结束" + SIMPLE_DATE_FORMAT.format(new Date()));
                 }
             }.start();
             countDownLatch.countDown();
         }
-        System.out.println("所有模拟请求结束---" + sdf.format(new Date()));
+        System.out.println("所有模拟请求结束---" + SIMPLE_DATE_FORMAT.format(new Date()));
     }
 }
